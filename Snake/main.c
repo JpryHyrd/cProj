@@ -133,3 +133,157 @@ void DrawFood() {
     DrawRectangle(food.x * cube_width + dw, food.y * cube_height + dh, food_height,
                   food_width, YELLOW);
 }
+// Checking eaten food and increase of the snakes speed
+//--------------------------------------------------------------------------------------
+void CheckFood() {
+    if (snake.posX == food.x && snake.posY == food.y) {
+        snake.length++;
+        snake.eaten = true;
+        SpawnFood();
+        snake.speed -= 0.003;
+    }
+}
+// Checking location of the snake
+//--------------------------------------------------------------------------------------
+void CheckCollision() {
+    if (snake_body[snake.posX][snake.posY].life_t > 0) {
+        is_game_over = true;
+    }
+}
+// Moving snake
+//--------------------------------------------------------------------------------------
+void MoveSnake() {
+    snake.updatedAt += GetFrameTime();
+    if (snake.updatedAt >= snake.speed) {
+        snake.updatedAt = 0;
+    } else {
+        return;
+    }
+
+    if (snake.eaten) {
+        snake.eaten = false;
+    } else {
+        for (int i = 0; i < squad_width; i++) {
+            for (int j = 0; j < squad_height; j++) {
+                if (snake_body[i][j].life_t > 0) {
+                    snake_body[i][j].life_t--;
+                }
+            }
+        }
+    }
+    snake.dirX = snake.next_dir_x;
+    snake.dirY = snake.next_dir_y;
+    snake.posX += snake.dirX;
+    snake.posY += snake.dirY;
+    if (snake.posX >= squad_width) {
+        snake.posX = 0;
+    }
+    if (snake.posX < 0) {
+        snake.posX = squad_width - 1;
+    }
+    if (snake.posY >= squad_height) {
+        snake.posY = 0;
+    }
+    if (snake.posY < 0) {
+        snake.posY = squad_height - 1;
+    }
+    CheckCollision();
+    snake_body[snake.posX][snake.posY].life_t = snake.length;
+}
+// Drawing the game (snake and food)
+//--------------------------------------------------------------------------------------
+void Draw() {
+    DrawFood();
+    DrawSnake();
+    if (is_game_over) {
+        DrawText("You Dead!", 200, screen_height / 2, 25, RED);
+        DrawText("Press SPACE to restart the Game", 200, screen_height / 2 + 20, 20, RED);
+    }
+}
+// Administration of the snake
+//--------------------------------------------------------------------------------------
+void ControlSnake() {
+    if ((snake.dirY == 0) && (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W))) {
+        snake.next_dir_y = -1;
+        snake.next_dir_x = 0;
+        return;
+    }
+    if ((snake.dirY == 0) && (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S))) {
+        snake.next_dir_y = 1;
+        snake.next_dir_x = 0;
+        return;
+    }
+    if ((snake.dirX == 0) && (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A))) {
+        snake.next_dir_y = 0;
+        snake.next_dir_x = -1;
+        return;
+    }
+    if ((snake.dirX == 0) && (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D))) {
+        snake.next_dir_y = 0;
+        snake.next_dir_x = 1;
+        return;
+    }
+}
+// Update
+//------------------------------------------------------------------------------------
+void Update(){
+    if (is_game_over){
+        if (IsKeyPressed(KEY_SPACE)) {
+            Setup();
+        }
+        return;
+    }
+    MoveSnake();
+    CheckFood();
+    ControlSnake();
+}
+// Setting screen parameters
+//--------------------------------------------------------------------------------------
+Rectangle GetCanvasTarget() {
+    float sh = (float)GetScreenHeight();
+    float sw = (float)GetScreenWidth();
+    float scale = fminf(sh / screen_height, sw / screen_width);
+    Rectangle rec = {0, 0, screen_width * scale, screen_height * scale};
+    return rec;
+}
+// The main func
+//--------------------------------------------------------------------------------------
+int main() {
+    // Initialization
+    //--------------------------------------------------------------------------------------
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(screen_width * 2, screen_height * 2, "Snake");
+    SetTargetFPS(30);
+    SetTextureFilter(GetFontDefault().texture, TEXTURE_FILTER_POINT);
+    canvas = LoadRenderTexture(screen_width, screen_height);
+    SetTextureFilter(canvas.texture, TEXTURE_FILTER_POINT);
+    Setup();
+    //--------------------------------------------------------------------------------------
+    // Main game loop
+    while (!WindowShouldClose()) {
+        //------------------------------------------------------------------------------------
+        // Draw
+        //------------------------------------------------------------------------------------
+        BeginDrawing();
+        ClearBackground(GREEN);
+        BeginTextureMode(canvas);
+        ClearBackground(BLACK);
+        Draw();
+        EndTextureMode();
+        Rectangle canvas_field = {0, 0, (float)canvas.texture.width,
+                                  -(float)canvas.texture.height};
+        DrawTexturePro(canvas.texture, canvas_field, GetCanvasTarget(), NULLS,
+                       0.0f, WHITE);
+        EndDrawing();
+        //------------------------------------------------------------------------------------
+        Update();
+    }
+    // De-Initialization
+    //--------------------------------------------------------------------------------------
+    CloseWindow();  // Close window and OpenGL context
+    //--------------------------------------------------------------------------------------
+    return 0;
+}
+//------------------------------------------------------------------------------------
+// THE END!
+//------------------------------------------------------------------------------------
